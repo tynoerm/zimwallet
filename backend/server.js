@@ -14,7 +14,7 @@ dotenv.config();
 // Initialize Express
 // ======================
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 // ======================
 // Middleware
@@ -37,8 +37,10 @@ let db = null;
 
 async function connectDB() {
   try {
+    console.log("🔌 Connecting to MySQL @ 109.75.161.2");
+
     db = mysql.createPool({
-      host: "bluebaby.co.uk", // ✅ CORRECT HOST
+      host: "109.75.161.2",              // ✅ CORRECT HOST
       user: "bluebabyco_bluebaby",
       password: "Bluebaby@2026!",
       database: "bluebabyco_agility_finance",
@@ -46,11 +48,11 @@ async function connectDB() {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
-      connectTimeout: 20000,
+      connectTimeout: 30000,
     });
 
     await db.query("SELECT 1");
-    console.log("✅ Connected to MySQL (bluebaby.co.uk)");
+    console.log("✅ MySQL connected successfully");
 
   } catch (err) {
     console.error("❌ MySQL connection error:", err.message);
@@ -74,7 +76,7 @@ app.use((req, res, next) => {
 });
 
 // ======================
-// Routes
+// Import Routes
 // ======================
 import LoginRoute from "./Routes/LoginRoute.js";
 import LoanRoute from "./Routes/LoanRoute.js";
@@ -94,8 +96,12 @@ app.get("/", (req, res) => {
 });
 
 app.get("/db-test", async (req, res) => {
-  const [rows] = await req.db.query("SELECT DATABASE() AS db");
-  res.json(rows[0]);
+  try {
+    const [rows] = await req.db.query("SELECT DATABASE() AS db");
+    res.json({ success: true, database: rows[0].db });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ======================
