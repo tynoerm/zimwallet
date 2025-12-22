@@ -8,7 +8,9 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 
-// Load environment variables (still useful if you move later)
+// ======================
+// Load environment variables
+// ======================
 dotenv.config();
 
 // ======================
@@ -32,7 +34,6 @@ app.use((req, res, next) => {
   console.log("📥 Incoming Request:");
   console.log(`➡️ Method: ${req.method}`);
   console.log(`➡️ URL: ${req.originalUrl}`);
-  console.log("➡️ Headers:", req.headers);
   console.log("➡️ Body:", req.body);
 
   const oldSend = res.send;
@@ -60,54 +61,48 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 app.use("/uploads", express.static(uploadDir));
 
 // ======================
-// MySQL Connection Pool (AMENDED)
+// MySQL Connection Pool (RENDER SAFE)
 // ======================
-let db;
+let db = null;
 
-try {
-  db = mysql.createPool({
-    host: "localhost", // change if hosting provides a different host
-    user: "bluebabyco_bluebaby",
-    password: "Bluebaby@2026!",
-    database: "bluebabyco_agility_finance", // ✅ ACTIVE DATABASE
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-  });
+async function connectDB() {
+  try {
+    db = mysql.createPool({
+      host: "mysql.bluebaby.co.uk", // ✅ CORRECT FOR RENDER
+      user: "bluebabyco_bluebaby",
+      password: "Bluebaby@2026!",
+      database: "bluebabyco_agility_finance",
+      port: 3306,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      connectTimeout: 20000,
+    });
 
-  // Test connection immediately
-  await db.query("SELECT 1");
-  console.log("✅ Connected to MySQL Database (via Pool)");
+    await db.query("SELECT 1");
+    console.log("✅ Connected to MySQL Database (Remote)");
 
-} catch (err) {
-  console.error("❌ MySQL connection error:", err.message);
-  process.exit(1);
+  } catch (err) {
+    console.error("❌ MySQL connection failed:", err.message);
+    // ❗ DO NOT exit on Render
+  }
 }
 
+connectDB();
+
 // ======================
-// Attach DB Pool to Every Request
+// Attach DB to Requests (Safe)
 // ======================
 app.use((req, res, next) => {
+  if (!db) {
+    return res.status(503).json({
+      success: false,
+      message: "Database not connected",
+    });
+  }
   req.db = db;
   next();
 });
-
-// ======================
-// Optional Query Logger Helper
-// ======================
-const logQuery = async (query, params = []) => {
-  console.log("🧠 Executing Query:", query);
-  if (params.length) console.log("➡️ Params:", params);
-
-  try {
-    const [results] = await db.query(query, params);
-    console.log("✅ Query Result:", results);
-    return results;
-  } catch (error) {
-    console.error("❌ Query Error:", error.message);
-    throw error;
-  }
-};
 
 // ======================
 // Import Routes
@@ -126,18 +121,29 @@ app.use("/api/getstatusloans", LoanstatusRoute);
 app.use("/api/loanstobepaid", PaymentRoutes);
 
 // ======================
-// Default Route
+// Health Check Route
 // ======================
 app.get("/", (req, res) => {
-  res.send("✅ Node.js backend running with MySQL and file uploads!");
+  res.send("✅ BlueBaby API running with MySQL");
+});
+
+// ======================
+// DB Test Route (IMPORTANT)
+// ======================
+app.get("/db-test", async (req, res) => {
+  try {
+    const [rows] = await req.db.query("SELECT DATABASE() AS db");
+    res.json({ success: true, database: rows[0].db });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ======================
 // Error Handling Middleware
 // ======================
 app.use((err, req, res, next) => {
-  console.error("🔥 Uncaught Server Error:");
-  console.error(err.stack || err);
+  console.error("🔥 Server Error:", err.stack || err);
   res.status(500).json({
     success: false,
     message: "Internal Server Error",
