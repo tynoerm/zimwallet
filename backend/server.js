@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 
-// Load environment variables
+// Load environment variables (still useful if you move later)
 dotenv.config();
 
 // ======================
@@ -60,26 +60,33 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 app.use("/uploads", express.static(uploadDir));
 
 // ======================
-// MySQL Connection Pool
+// MySQL Connection Pool (AMENDED)
 // ======================
 let db;
+
 try {
   db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
+    host: "localhost", // change if hosting provides a different host
+    user: "bluebabyco_bluebaby",
+    password: "Bluebaby@2026!",
+    database: "bluebabyco_agility_finance", // ✅ ACTIVE DATABASE
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
   });
+
+  // Test connection immediately
+  await db.query("SELECT 1");
   console.log("✅ Connected to MySQL Database (via Pool)");
+
 } catch (err) {
   console.error("❌ MySQL connection error:", err.message);
   process.exit(1);
 }
 
-// Attach pool to every request
+// ======================
+// Attach DB Pool to Every Request
+// ======================
 app.use((req, res, next) => {
   req.db = db;
   next();
@@ -91,6 +98,7 @@ app.use((req, res, next) => {
 const logQuery = async (query, params = []) => {
   console.log("🧠 Executing Query:", query);
   if (params.length) console.log("➡️ Params:", params);
+
   try {
     const [results] = await db.query(query, params);
     console.log("✅ Query Result:", results);
@@ -130,7 +138,10 @@ app.get("/", (req, res) => {
 app.use((err, req, res, next) => {
   console.error("🔥 Uncaught Server Error:");
   console.error(err.stack || err);
-  res.status(500).json({ success: false, message: "Internal Server Error" });
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+  });
 });
 
 // ======================
