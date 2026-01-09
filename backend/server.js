@@ -19,7 +19,12 @@ const PORT = process.env.PORT || 10000;
 // ======================
 // Middleware
 // ======================
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -39,17 +44,19 @@ async function connectDB() {
   try {
     console.log("🔌 Connecting to MySQL @ 109.75.161.2");
 
-    db = mysql.createPool({
-      host: "109.75.161.2",              // ✅ CORRECT HOST
-      user: "bluebabyco_bluebaby",
-      password: "Bluebaby@2026!",
-      database: "bluebabyco_agility_finance",
-      port: 3306,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      connectTimeout: 30000,
-    });
+   db = mysql.createPool({
+  host: "109.75.161.2",
+  user: "bluebabyco_bluebaby",
+  password: "Bluebaby@2026!",
+  database: "bluebabyco_agility_finance",
+  port: 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  connectTimeout: 30000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
+});
 
     await db.query("SELECT 1");
     console.log("✅ MySQL connected successfully");
