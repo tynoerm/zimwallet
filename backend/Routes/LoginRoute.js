@@ -3,49 +3,28 @@ import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
-// ======================
-// Phone Normalizer
-// ======================
-function normalizePhone(phone) {
-  let p = phone.trim();
+const normalizePhone = (phone = "") => {
+  if (phone.startsWith("+")) return phone.replace("+", "");
+  if (phone.startsWith("0")) return "263" + phone.slice(1);
+  return phone;
+};
 
-  // Remove spaces
-  p = p.replace(/\s+/g, "");
-
-  // If starts with 0 -> remove it
-  if (p.startsWith("0")) {
-    p = p.substring(1);
-  }
-
-  // If starts with 263 -> add +
-  if (p.startsWith("263")) {
-    p = "+" + p;
-  }
-
-  // If already correct
-  if (!p.startsWith("+263")) {
-    p = "+263" + p;
-  }
-
-  return p;
-}
 
 // ======================
 // SIGNUP
 // ======================
 router.post("/signup", async (req, res) => {
   try {
-    if (!req.db) {
-      return res.status(503).json({ success: false, message: "Database not connected" });
-    }
+    const phone = normalizePhone(req.body.phone);
+const password = req.body.password;
 
-    let { phone, password } = req.body;
 
     if (!phone || !password) {
-      return res.status(400).json({ success: false, message: "Phone and password required" });
+      return res.status(400).json({
+        success: false,
+        message: "Phone and password required",
+      });
     }
-
-    phone = normalizePhone(phone);
 
     const [existing] = await req.db.query(
       "SELECT id FROM users WHERE phone = ?",
@@ -53,7 +32,10 @@ router.post("/signup", async (req, res) => {
     );
 
     if (existing.length > 0) {
-      return res.status(409).json({ success: false, message: "Phone already registered" });
+      return res.status(409).json({
+        success: false,
+        message: "Phone already registered",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -72,7 +54,10 @@ router.post("/signup", async (req, res) => {
     });
   } catch (error) {
     console.error("SIGNUP ERROR:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
@@ -81,17 +66,16 @@ router.post("/signup", async (req, res) => {
 // ======================
 router.post("/login", async (req, res) => {
   try {
-    if (!req.db) {
-      return res.status(503).json({ success: false, message: "Database not connected" });
-    }
+    const phone = normalizePhone(req.body.phone);
+const password = req.body.password;
 
-    let { phone, password } = req.body;
 
     if (!phone || !password) {
-      return res.status(400).json({ success: false, message: "Phone and password required" });
+      return res.status(400).json({
+        success: false,
+        message: "Phone and password required",
+      });
     }
-
-    phone = normalizePhone(phone);
 
     const [rows] = await req.db.query(
       "SELECT * FROM users WHERE phone = ?",
@@ -99,14 +83,20 @@ router.post("/login", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
 
     const user = rows[0];
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
 
     res.json({
@@ -120,7 +110,10 @@ router.post("/login", async (req, res) => {
     });
   } catch (error) {
     console.error("LOGIN ERROR:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
